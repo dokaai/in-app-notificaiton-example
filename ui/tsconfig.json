@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "target": "es5",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/client": ["../sdk/client/index.ts"],
+      "@/client/*": ["../sdk/client/*"],
+      "@/react": ["../sdk/react/index.ts"],
+      "@/react/*": ["../sdk/react/*"],
+      "@/shared/*": ["../sdk/shared/*"],
+      "@sdk/client": ["../sdk/client/index.ts"],
+      "@sdk/client/*": ["../sdk/client/*"],
+      "@sdk/react": ["../sdk/react/index.ts"],
+      "@sdk/react/*": ["../sdk/react/*"],
+      "@sdk/shared/*": ["../sdk/shared/*"],
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}

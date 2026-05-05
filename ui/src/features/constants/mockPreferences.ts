@@ -1,0 +1,153 @@
+import { PreferenceGroup } from "@/features/types/preference.types";
+
+export const MOCK_PREFERENCE_GROUPS: PreferenceGroup[] = [
+  {
+    id: "group-account",
+    name: "Account & Security",
+    description: "Critical updates around login activity, verification, and account protection.",
+    isNotificationOff: false,
+    channels: {
+      email: true,
+      inApp: true,
+      sms: false,
+      push: true,
+      whatsApp: false,
+    },
+    topics: [
+      {
+        id: "topic-login-alerts",
+        name: "Login Alerts",
+        description: "New device sign-ins and suspicious login attempts.",
+        isNotificationOff: false,
+        channels: {
+          email: true,
+          inApp: true,
+          sms: true,
+          push: true,
+          whatsApp: false,
+        },
+      },
+      {
+        id: "topic-password-updates",
+        name: "Password Updates",
+        description: "Password reset requests and completion confirmations.",
+        isNotificationOff: false,
+        channels: {
+          email: true,
+          inApp: true,
+          sms: false,
+          push: false,
+          whatsApp: false,
+        },
+      },
+      {
+        id: "topic-security-checks",
+        name: "Security Checks",
+        description: "Verification reminders and account review prompts.",
+        isNotificationOff: false,
+        channels: {
+          email: true,
+          inApp: false,
+          sms: false,
+          push: true,
+          whatsApp: false,
+        },
+      },
+    ],
+  },
+  {
+    id: "group-learning",
+    name: "Learning & Progress",
+    description: "Course milestones, assignment reminders, and learning nudges.",
+    isNotificationOff: false,
+    channels: {
+      email: true,
+      inApp: true,
+      sms: false,
+      push: true,
+      whatsApp: true,
+    },
+    topics: [
+      {
+        id: "topic-assignment-reminders",
+        name: "Assignment Reminders",
+        description: "Upcoming due dates and pending task nudges.",
+        isNotificationOff: false,
+        channels: {
+          email: true,
+          inApp: true,
+          sms: false,
+          push: true,
+          whatsApp: true,
+        },
+      },
+      {
+        id: "topic-streaks",
+        name: "Study Streaks",
+        description: "Consistency reminders and streak achievements.",
+        isNotificationOff: false,
+        channels: {
+          email: false,
+          inApp: true,
+          sms: false,
+          push: true,
+          whatsApp: false,
+        },
+      },
+      {
+        id: "topic-results",
+        name: "Result Announcements",
+        description: "Evaluation outcomes and score updates.",
+        isNotificationOff: false,
+        channels: {
+          email: true,
+          inApp: true,
+          sms: true,
+          push: true,
+          whatsApp: false,
+        },
+      },
+    ],
+  },
+  {
+    id: "group-product",
+    name: "Product & Marketing",
+    description: "Feature launches, campaigns, offers, and important product announcements.",
+    isNotificationOff: false,
+    channels: {
+      email: false,
+      inApp: true,
+      sms: false,
+      push: false,
+      whatsApp: false,
+    },
+    topics: [
+      {
+        id: "topic-feature-launches",
+        name: "Feature Launches",
+        description: "New product capabilities and release announcements.",
+        isNotificationOff: false,
+        channels: {
+          email: false,
+          inApp: true,
+          sms: false,
+          push: false,
+          whatsApp: false,
+        },
+      },
+      {
+        id: "topic-special-offers",
+        name: "Special Offers",
+        description: "Discounts, seasonal campaigns, and upgrade promotions.",
+        isNotificationOff: false,
+        channels: {
+          email: true,
+          inApp: true,
+          sms: false,
+          push: false,
+          whatsApp: true,
+        },
+      },
+    ],
+  },
+];

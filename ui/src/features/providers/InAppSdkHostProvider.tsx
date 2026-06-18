@@ -14,40 +14,28 @@ export function InAppSdkHostProvider({
   children: React.ReactNode;
 }) {
   const isAuthenticated = useSdkStore((state) => state.isAuthenticated);
-  const projectId = useSdkStore((state) => state.projectId);
-  const orgId = useSdkStore((state) => state.orgId);
-  const customerPoolId = useSdkStore((state) => state.customerPoolId);
-  const customerId = useSdkStore((state) => state.customerId);
+  const customerUniqueCustomerId = useSdkStore((state) => state.customerUniqueCustomerId);
   const jwtToken = useSdkStore((state) => state.jwtToken);
 
   const client = useMemo(
     () => {
       if (
         !isAuthenticated ||
-        !projectId ||
-        !orgId ||
-        !customerPoolId ||
-        !customerId ||
+        !customerUniqueCustomerId ||
         !jwtToken
       ) {
         return null;
       }
 
       return createHostInAppSdkClient({
-        projectId,
-        orgId,
-        customerPoolId,
-        customerId,
+        customerUniqueCustomerId,
         jwtToken,
       });
     },
     [
-      customerId,
-      customerPoolId,
+      customerUniqueCustomerId,
       isAuthenticated,
       jwtToken,
-      orgId,
-      projectId,
     ]
   );
 

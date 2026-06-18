@@ -14,13 +14,13 @@ export class ApiError extends Error {
 
 export class HttpClient {
   private readonly accessToken?: string;
-  private readonly orgId?: string;
+  private readonly authToken?: string;
   private readonly fetcher: typeof fetch;
   private readonly defaultHeaders?: HeadersInit;
 
   constructor(config: ApiClientConfig = {}) {
     this.accessToken = config.accessToken;
-    this.orgId = config.orgId;
+    this.authToken = config.authToken;
     this.fetcher = config.fetch ?? globalThis.fetch.bind(globalThis);
     this.defaultHeaders = config.defaultHeaders;
   }
@@ -32,8 +32,8 @@ export class HttpClient {
       merged.set('x-access-token', this.accessToken);
     }
 
-    if (this.orgId) {
-      merged.set('x-org-id', this.orgId);
+    if (this.authToken) {
+      merged.set('Authorization', `Bearer ${this.authToken}`);
     }
 
     merged.set('Content-Type', 'application/json');

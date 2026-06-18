@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
-import type { InAppNotification } from "@sdk/shared/types";
+import { useEffect } from "react";
 import { useToast } from "@/features/hooks/useToast";
 import { useOptionalInAppSdkClient } from "@/features/providers/InAppSdkHostProvider";
 import { useSdkStore } from "@/features/store/useSdkStore";
 import { getApiErrorMessage, getApiSuccessMessage } from "@/lib/api-feedback";
 import {
-  fetchHostCustomerDetails,
+  getCustomerJwtExpirationTime,
+  refreshCustomerJwtIfNeeded,
+} from "@/lib/customer-jwt";
+import {
   fetchHostNotifications,
   fetchHostUnreadCount,
-  getSocketCustomerKeyFromCustomer,
-  mapSdkCustomerToCustomerDetails,
+  buildCustomerDetails,
   mapSdkNotificationToUiItem,
   normalizeIncomingNotification,
   subscribeToInAppMessages,
@@ -19,13 +20,15 @@ import {
 
 export function InAppSdkBootstrap() {
   const isAuthenticated = useSdkStore((state) => state.isAuthenticated);
-  const projectId = useSdkStore((state) => state.projectId);
-  const customerPoolId = useSdkStore((state) => state.customerPoolId);
-  const customerId = useSdkStore((state) => state.customerId);
-  const orgId = useSdkStore((state) => state.orgId);
+  const customerJwtPrivateKey = useSdkStore((state) => state.customerJwtPrivateKey);
+  const customerSigningKeyId = useSdkStore((state) => state.customerSigningKeyId);
+  const customerUniqueCustomerId = useSdkStore((state) => state.customerUniqueCustomerId);
+  const customerWorkspaceId = useSdkStore((state) => state.customerWorkspaceId);
+  const customerProductSpaceCode = useSdkStore((state) => state.customerProductSpaceCode);
   const jwtToken = useSdkStore((state) => state.jwtToken);
   const customerDetails = useSdkStore((state) => state.customerDetails);
   const socketSubscriptionNonce = useSdkStore((state) => state.socketSubscriptionNonce);
+  const updateJwtToken = useSdkStore((state) => state.updateJwtToken);
   const setCustomerDetails = useSdkStore((state) => state.setCustomerDetails);
   const setNotifications = useSdkStore((state) => state.setNotifications);
   const setUnreadCount = useSdkStore((state) => state.setUnreadCount);
@@ -35,20 +38,86 @@ export function InAppSdkBootstrap() {
   const setSocketStatus = useSdkStore((state) => state.setSocketStatus);
   const client = useOptionalInAppSdkClient();
   const toast = useToast();
-  const canBootstrap = Boolean(
-    client &&
-    isAuthenticated &&
-    projectId &&
-    customerPoolId &&
-    customerId
-  );
-  const socketCustomerKey = useMemo(() => {
-    if (!customerDetails?.id) {
-      return customerId || null;
+  const canBootstrap = Boolean(client && isAuthenticated && customerUniqueCustomerId);
+
+  useEffect(() => {
+    if (
+      !isAuthenticated ||
+      !customerJwtPrivateKey ||
+      !customerSigningKeyId ||
+      !customerUniqueCustomerId ||
+      !customerWorkspaceId ||
+      !customerProductSpaceCode ||
+      !jwtToken
+    ) {
+      return;
     }
 
-    return customerDetails.id;
-  }, [customerDetails?.id, customerId]);
+    let isCancelled = false;
+    let refreshTimeoutId: number | null = null;
+
+    async function syncJwtToken(currentToken: string) {
+      try {
+        const result = await refreshCustomerJwtIfNeeded({
+          currentToken,
+          privateKey: customerJwtPrivateKey,
+          signingKeyId: customerSigningKeyId,
+          uniqueCustomerId: customerUniqueCustomerId,
+          workspaceId: customerWorkspaceId,
+          productSpaceCode: customerProductSpaceCode,
+        });
+
+        if (isCancelled) {
+          return;
+        }
+
+        const nextToken = result.jwtToken;
+
+        if (result.refreshed && nextToken !== currentToken) {
+          updateJwtToken(nextToken);
+        }
+
+        const expirationTime =
+          result.expirationTime ?? getCustomerJwtExpirationTime(nextToken);
+        const refreshDelay = expirationTime
+          ? Math.max(expirationTime - Date.now() - 60 * 1000, 5 * 1000)
+          : 14 * 60 * 1000;
+
+        refreshTimeoutId = window.setTimeout(() => {
+          void syncJwtToken(nextToken);
+        }, refreshDelay);
+      } catch (error) {
+        if (isCancelled) {
+          return;
+        }
+
+        toast.error(getApiErrorMessage(error, "Unable to refresh the customer bearer token."));
+        refreshTimeoutId = window.setTimeout(() => {
+          void syncJwtToken(currentToken);
+        }, 30 * 1000);
+      }
+    }
+
+    void syncJwtToken(jwtToken);
+
+    return () => {
+      isCancelled = true;
+
+      if (refreshTimeoutId !== null) {
+        window.clearTimeout(refreshTimeoutId);
+      }
+    };
+  }, [
+    customerJwtPrivateKey,
+    customerProductSpaceCode,
+    customerSigningKeyId,
+    customerUniqueCustomerId,
+    customerWorkspaceId,
+    isAuthenticated,
+    jwtToken,
+    toast,
+    updateJwtToken,
+  ]);
 
   useEffect(() => {
     if (!canBootstrap || !client) {
@@ -68,39 +137,19 @@ export function InAppSdkBootstrap() {
       setNotificationsError(null);
 
       try {
-        const customer = customerDetails
-          ? null
-          : await fetchHostCustomerDetails(sdkClient, {
-              projectId,
-              orgId,
-              customerPoolId,
-              customerId,
-              jwtToken,
-            });
-
-        if (isCancelled) {
-          return;
-        }
-
-        const resolvedCustomerDetails = customer
-          ? mapSdkCustomerToCustomerDetails(customer)
-          : customerDetails;
-
-        if (customer) {
-          setCustomerDetails(resolvedCustomerDetails);
-          toast.success(getApiSuccessMessage(customer, "Customer details fetched successfully."));
-        }
-
-        const socketCustomerKey = customer
-          ? getSocketCustomerKeyFromCustomer(customer)
-          : resolvedCustomerDetails?.id;
+        const resolvedCustomerDetails =
+          customerDetails ?? buildCustomerDetails(customerUniqueCustomerId);
         const [response, unreadCount] = await Promise.all([
-          fetchHostNotifications(sdkClient, customerId),
-          fetchHostUnreadCount(sdkClient, customerId),
+          fetchHostNotifications(sdkClient),
+          fetchHostUnreadCount(sdkClient),
         ]);
 
         if (isCancelled) {
           return;
+        }
+
+        if (!customerDetails) {
+          setCustomerDetails(resolvedCustomerDetails);
         }
 
         setNotifications(response.notifications.map(mapSdkNotificationToUiItem));
@@ -130,35 +179,26 @@ export function InAppSdkBootstrap() {
   }, [
     canBootstrap,
     client,
-    customerId,
     customerDetails,
-    customerPoolId,
+    customerUniqueCustomerId,
     isAuthenticated,
     jwtToken,
-    orgId,
-    projectId,
     setCustomerDetails,
     setNotifications,
     setUnreadCount,
-    upsertNotification,
-    setSocketStatus,
     setNotificationsError,
     setNotificationsLoading,
   ]);
 
   useEffect(() => {
-    if (!canBootstrap || !client || !socketCustomerKey) {
+    if (!canBootstrap || !client) {
       return;
     }
 
     return subscribeToInAppMessages(
       {
-        projectId,
-        orgId,
-        customerPoolId,
-        customerId,
+        customerUniqueCustomerId,
         jwtToken,
-        socketCustomerKey,
       },
       (payload) => {
         const incoming = normalizeIncomingNotification(payload);
@@ -172,13 +212,9 @@ export function InAppSdkBootstrap() {
   }, [
     canBootstrap,
     client,
-    customerId,
-    customerPoolId,
+    customerUniqueCustomerId,
     jwtToken,
-    orgId,
-    projectId,
     setSocketStatus,
-    socketCustomerKey,
     socketSubscriptionNonce,
     upsertNotification,
   ]);

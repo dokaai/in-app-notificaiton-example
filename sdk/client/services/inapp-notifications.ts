@@ -11,13 +11,11 @@ export class InAppNotificationsService {
   constructor(private readonly transport: InAppNotificationTransport) {}
 
   async getAll({
-    customerId,
     page = 1,
     size = 10,
     isRead,
   }: GetAllInAppNotificationsParams) {
     return this.transport.getAllInAppNotifications({
-      customerId,
       page,
       size,
       isRead,
@@ -26,27 +24,17 @@ export class InAppNotificationsService {
 
   async markAsRead({
     notificationId,
-    customerId,
   }: MarkInAppNotificationAsReadParams) {
     return this.transport.markInAppNotificationAsRead({
       notificationId,
-      customerId,
     });
   }
 
-  async markAllAsRead({
-    customerId,
-  }: MarkAllInAppNotificationsAsReadParams) {
-    return this.transport.markAllInAppNotificationsAsRead({
-      customerId,
-    });
+  async markAllAsRead({}: MarkAllInAppNotificationsAsReadParams) {
+    return this.transport.markAllInAppNotificationsAsRead({});
   }
 
-  async getUnreadCount({
-    customerId,
-  }: GetUnreadInAppNotificationsCountParams) {
-    return this.transport.getUnreadInAppNotificationsCount({
-      customerId,
-    });
+  async getUnreadCount({}: GetUnreadInAppNotificationsCountParams) {
+    return this.transport.getUnreadInAppNotificationsCount({});
   }
 }

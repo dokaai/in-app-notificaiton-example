@@ -1,24 +1,33 @@
 const STORAGE_KEYS = {
-  projectId: "dokaai-sdk-project-id",
-  orgId: "dokaai-sdk-org-id",
-  customerPoolId: "dokaai-sdk-customer-pool-id",
-  customerId: "dokaai-sdk-customer-id",
+  customerJwtPrivateKey: "dokaai-sdk-customer-jwt-private-key",
+  customerSigningKeyId: "dokaai-sdk-customer-signing-key-id",
+  customerUniqueCustomerId: "dokaai-sdk-customer-unique-customer-id",
+  customerWorkspaceId: "dokaai-sdk-customer-workspace-id",
+  customerProductSpaceCode: "dokaai-sdk-customer-product-space-code",
   jwtToken: "dokaai-sdk-jwt-token",
 } as const;
 
 export function saveAuthToStorage(payload: {
-  projectId: string;
-  orgId: string;
-  customerPoolId: string;
-  customerId: string;
+  customerJwtPrivateKey: string;
+  customerSigningKeyId: string;
+  customerUniqueCustomerId: string;
+  customerWorkspaceId: string;
+  customerProductSpaceCode: string;
   jwtToken: string;
 }) {
   if (typeof window === "undefined") return;
 
-  localStorage.setItem(STORAGE_KEYS.projectId, payload.projectId);
-  localStorage.setItem(STORAGE_KEYS.orgId, payload.orgId);
-  localStorage.setItem(STORAGE_KEYS.customerPoolId, payload.customerPoolId);
-  localStorage.setItem(STORAGE_KEYS.customerId, payload.customerId);
+  localStorage.setItem(STORAGE_KEYS.customerJwtPrivateKey, payload.customerJwtPrivateKey);
+  localStorage.setItem(STORAGE_KEYS.customerSigningKeyId, payload.customerSigningKeyId);
+  localStorage.setItem(
+    STORAGE_KEYS.customerUniqueCustomerId,
+    payload.customerUniqueCustomerId
+  );
+  localStorage.setItem(STORAGE_KEYS.customerWorkspaceId, payload.customerWorkspaceId);
+  localStorage.setItem(
+    STORAGE_KEYS.customerProductSpaceCode,
+    payload.customerProductSpaceCode
+  );
   localStorage.setItem(STORAGE_KEYS.jwtToken, payload.jwtToken);
 }
 
@@ -31,10 +40,11 @@ export function saveJwtTokenToStorage(jwtToken: string) {
 export function clearAuthFromStorage() {
   if (typeof window === "undefined") return;
 
-  localStorage.removeItem(STORAGE_KEYS.projectId);
-  localStorage.removeItem(STORAGE_KEYS.orgId);
-  localStorage.removeItem(STORAGE_KEYS.customerPoolId);
-  localStorage.removeItem(STORAGE_KEYS.customerId);
+  localStorage.removeItem(STORAGE_KEYS.customerJwtPrivateKey);
+  localStorage.removeItem(STORAGE_KEYS.customerSigningKeyId);
+  localStorage.removeItem(STORAGE_KEYS.customerUniqueCustomerId);
+  localStorage.removeItem(STORAGE_KEYS.customerWorkspaceId);
+  localStorage.removeItem(STORAGE_KEYS.customerProductSpaceCode);
   localStorage.removeItem(STORAGE_KEYS.jwtToken);
 }
 
@@ -43,21 +53,40 @@ export function readAuthFromStorage() {
     return null;
   }
 
-  const projectId = localStorage.getItem(STORAGE_KEYS.projectId);
-  const orgId = localStorage.getItem(STORAGE_KEYS.orgId);
-  const customerPoolId = localStorage.getItem(STORAGE_KEYS.customerPoolId);
-  const customerId = localStorage.getItem(STORAGE_KEYS.customerId);
+  const customerJwtPrivateKey = localStorage.getItem(
+    STORAGE_KEYS.customerJwtPrivateKey
+  );
+  const customerSigningKeyId = localStorage.getItem(
+    STORAGE_KEYS.customerSigningKeyId
+  );
+  const customerUniqueCustomerId = localStorage.getItem(
+    STORAGE_KEYS.customerUniqueCustomerId
+  );
+  const customerWorkspaceId = localStorage.getItem(
+    STORAGE_KEYS.customerWorkspaceId
+  );
+  const customerProductSpaceCode = localStorage.getItem(
+    STORAGE_KEYS.customerProductSpaceCode
+  );
   const jwtToken = localStorage.getItem(STORAGE_KEYS.jwtToken);
 
-  if (!projectId || !orgId || !customerPoolId || !customerId || !jwtToken) {
+  if (
+    !customerJwtPrivateKey ||
+    !customerSigningKeyId ||
+    !customerUniqueCustomerId ||
+    !customerWorkspaceId ||
+    !customerProductSpaceCode ||
+    !jwtToken
+  ) {
     return null;
   }
 
   return {
-    projectId,
-    orgId,
-    customerPoolId,
-    customerId,
+    customerJwtPrivateKey,
+    customerSigningKeyId,
+    customerUniqueCustomerId,
+    customerWorkspaceId,
+    customerProductSpaceCode,
     jwtToken,
   };
 }

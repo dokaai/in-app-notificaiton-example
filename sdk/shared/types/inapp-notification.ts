@@ -57,7 +57,6 @@ export interface InAppNotification {
 }
 
 export interface GetAllInAppNotificationsParams {
-  customerId: string;
   page?: number;
   size?: number;
   isRead?: boolean;
@@ -65,13 +64,8 @@ export interface GetAllInAppNotificationsParams {
 
 export interface MarkInAppNotificationAsReadParams {
   notificationId: string;
-  customerId: string;
 }
 
-export interface MarkAllInAppNotificationsAsReadParams {
-  customerId: string;
-}
+export interface MarkAllInAppNotificationsAsReadParams {}
 
-export interface GetUnreadInAppNotificationsCountParams {
-  customerId: string;
-}
+export interface GetUnreadInAppNotificationsCountParams {}

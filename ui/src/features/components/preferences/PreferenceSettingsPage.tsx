@@ -10,7 +10,6 @@ import { PreferenceSettingsSkeleton } from "@/features/components/preferences/Pr
 import { PageHeader } from "@/features/components/shared/PageHeader";
 import { useToast } from "@/features/hooks/useToast";
 import { useInAppSdkClient } from "@/features/providers/InAppSdkHostProvider";
-import { useSdkStore } from "@/features/store/useSdkStore";
 import { MOCK_PREFERENCE_GROUPS } from "@/features/constants/mockPreferences";
 import {
   PreferenceChannelState,
@@ -27,8 +26,6 @@ import {
 export function PreferenceSettingsPage() {
   const client = useInAppSdkClient();
   const toast = useToast();
-  const projectId = useSdkStore((state) => state.projectId);
-  const customerId = useSdkStore((state) => state.customerId);
   const [search, setSearch] = useState("");
   const [expandedGroupIds, setExpandedGroupIds] = useState<string[]>([]);
   const [groups, setGroups] = useState<PreferenceGroup[]>(MOCK_PREFERENCE_GROUPS);
@@ -38,15 +35,10 @@ export function PreferenceSettingsPage() {
     let isCancelled = false;
 
     async function loadPreferences() {
-      if (!projectId || !customerId) {
-        setIsLoading(false);
-        return;
-      }
-
       setIsLoading(true);
 
       try {
-        const response = await fetchHostPreferences(client, projectId, customerId);
+        const response = await fetchHostPreferences(client);
 
         if (isCancelled) {
           return;
@@ -75,7 +67,7 @@ export function PreferenceSettingsPage() {
     return () => {
       isCancelled = true;
     };
-  }, [client, customerId, projectId, toast]);
+  }, [client, toast]);
 
   const filteredGroups = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -118,8 +110,6 @@ export function PreferenceSettingsPage() {
 
     try {
       const response = await client.preferences.saveGroupPreference({
-        projectId,
-        customerId,
         groupId,
         body: buildSaveGroupPreferencePayload({
           ...targetGroup,
@@ -163,8 +153,6 @@ export function PreferenceSettingsPage() {
 
     try {
       const response = await client.preferences.saveTopicPreference({
-        projectId,
-        customerId,
         topicId,
         body: buildSaveTopicPreferencePayload({
           ...targetTopic,
@@ -210,8 +198,6 @@ export function PreferenceSettingsPage() {
 
     try {
       const response = await client.preferences.saveGroupPreference({
-        projectId,
-        customerId,
         groupId,
         body: buildSaveGroupPreferencePayload({
           ...targetGroup,
@@ -254,8 +240,6 @@ export function PreferenceSettingsPage() {
 
     try {
       const response = await client.preferences.saveTopicPreference({
-        projectId,
-        customerId,
         topicId,
         body: buildSaveTopicPreferencePayload({
           ...targetTopic,

@@ -34,8 +34,7 @@ export interface CustomerPreferenceGroup {
 }
 
 export interface GetCustomerPreferencesParams {
-  projectId: string;
-  customerId: string;
+  projectId?: string;
 }
 
 export interface SaveGroupPreferenceBody {
@@ -49,15 +48,11 @@ export interface SaveTopicPreferenceBody {
 }
 
 export interface SaveGroupPreferenceParams {
-  projectId: string;
-  customerId: string;
   groupId: string;
   body: SaveGroupPreferenceBody;
 }
 
 export interface SaveTopicPreferenceParams {
-  projectId: string;
-  customerId: string;
   topicId: string;
   body: SaveTopicPreferenceBody;
 }

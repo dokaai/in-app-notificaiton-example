@@ -8,10 +8,11 @@ import { SocketStatus } from "@/features/types/socket.types";
 interface SdkState {
   isHydrated: boolean;
   isAuthenticated: boolean;
-  projectId: string;
-  orgId: string;
-  customerPoolId: string;
-  customerId: string;
+  customerJwtPrivateKey: string;
+  customerSigningKeyId: string;
+  customerUniqueCustomerId: string;
+  customerWorkspaceId: string;
+  customerProductSpaceCode: string;
   jwtToken: string;
   customerDetails: CustomerDetails | null;
   socketStatus: SocketStatus;
@@ -42,10 +43,11 @@ interface SdkState {
 export const useSdkStore = create<SdkState>((set, get) => ({
   isHydrated: false,
   isAuthenticated: false,
-  projectId: "",
-  orgId: "",
-  customerPoolId: "",
-  customerId: "",
+  customerJwtPrivateKey: "",
+  customerSigningKeyId: "",
+  customerUniqueCustomerId: "",
+  customerWorkspaceId: "",
+  customerProductSpaceCode: "",
   jwtToken: "",
   customerDetails: null,
   socketStatus: "disconnected",
@@ -54,14 +56,29 @@ export const useSdkStore = create<SdkState>((set, get) => ({
   notificationsLoading: false,
   notificationsError: null,
   socketSubscriptionNonce: 0,
-  login: ({ projectId, orgId, customerPoolId, customerId, jwtToken }) => {
-    saveAuthToStorage({ projectId, orgId, customerPoolId, customerId, jwtToken });
+  login: ({
+    customerJwtPrivateKey,
+    customerSigningKeyId,
+    customerUniqueCustomerId,
+    customerWorkspaceId,
+    customerProductSpaceCode,
+    jwtToken,
+  }) => {
+    saveAuthToStorage({
+      customerJwtPrivateKey,
+      customerSigningKeyId,
+      customerUniqueCustomerId,
+      customerWorkspaceId,
+      customerProductSpaceCode,
+      jwtToken,
+    });
     set({
       isAuthenticated: true,
-      projectId,
-      orgId,
-      customerPoolId,
-      customerId,
+      customerJwtPrivateKey,
+      customerSigningKeyId,
+      customerUniqueCustomerId,
+      customerWorkspaceId,
+      customerProductSpaceCode,
       jwtToken,
       customerDetails: null,
       socketStatus: "disconnected",
@@ -73,10 +90,11 @@ export const useSdkStore = create<SdkState>((set, get) => ({
     clearAuthFromStorage();
     set({
       isAuthenticated: false,
-      projectId: "",
-      orgId: "",
-      customerPoolId: "",
-      customerId: "",
+      customerJwtPrivateKey: "",
+      customerSigningKeyId: "",
+      customerUniqueCustomerId: "",
+      customerWorkspaceId: "",
+      customerProductSpaceCode: "",
       jwtToken: "",
       customerDetails: null,
       socketStatus: "disconnected",
@@ -102,10 +120,11 @@ export const useSdkStore = create<SdkState>((set, get) => ({
     set({
       isHydrated: true,
       isAuthenticated: true,
-      projectId: auth.projectId,
-      orgId: auth.orgId,
-      customerPoolId: auth.customerPoolId,
-      customerId: auth.customerId,
+      customerJwtPrivateKey: auth.customerJwtPrivateKey,
+      customerSigningKeyId: auth.customerSigningKeyId,
+      customerUniqueCustomerId: auth.customerUniqueCustomerId,
+      customerWorkspaceId: auth.customerWorkspaceId,
+      customerProductSpaceCode: auth.customerProductSpaceCode,
       jwtToken: auth.jwtToken,
       customerDetails: null,
       socketStatus: "disconnected",

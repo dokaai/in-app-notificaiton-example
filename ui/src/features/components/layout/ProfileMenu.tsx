@@ -17,8 +17,7 @@ export function ProfileMenu() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const logout = useSdkStore((state) => state.logout);
   const updateJwtToken = useSdkStore((state) => state.updateJwtToken);
-  const orgId = useSdkStore((state) => state.orgId);
-  const customerId = useSdkStore((state) => state.customerId);
+  const customerUniqueCustomerId = useSdkStore((state) => state.customerUniqueCustomerId);
   const jwtToken = useSdkStore((state) => state.jwtToken);
   const customerDetails = useSdkStore((state) => state.customerDetails);
   const toast = useToast();
@@ -96,12 +95,8 @@ export function ProfileMenu() {
           </div>
           <div className="space-y-3 py-3 text-sm">
             <div>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">orgId</div>
-              <div className="truncate text-foreground">{orgId}</div>
-            </div>
-            <div>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">customerId</div>
-              <div className="truncate text-foreground">{customerId}</div>
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">uniqueCustomerId</div>
+              <div className="truncate text-foreground">{customerUniqueCustomerId}</div>
             </div>
             <div className="space-y-0.5">
               <div className="text-xs uppercase tracking-wide text-muted-foreground">jwtToken</div>

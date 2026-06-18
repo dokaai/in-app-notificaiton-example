@@ -1,6 +1,6 @@
 export interface ApiClientConfig {
   accessToken?: string;
-  orgId?: string;
+  authToken?: string;
   fetch?: typeof fetch;
   defaultHeaders?: HeadersInit;
 }

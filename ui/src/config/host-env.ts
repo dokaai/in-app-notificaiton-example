@@ -1,6 +1,5 @@
 const REQUIRED_ENV_KEYS = [
   "NEXT_PUBLIC_NUDGE_SERVICE_API_URL",
-  "NEXT_PUBLIC_CUSTOMER_SERVICE_API_URL",
   "NEXT_PUBLIC_WSS_SERVICE_API_URL",
 ] as const;
 
@@ -9,8 +8,6 @@ type RequiredEnvKey = (typeof REQUIRED_ENV_KEYS)[number];
 const PUBLIC_ENV_VALUES: Record<RequiredEnvKey, string | undefined> = {
   NEXT_PUBLIC_NUDGE_SERVICE_API_URL:
     process.env.NEXT_PUBLIC_NUDGE_SERVICE_API_URL,
-  NEXT_PUBLIC_CUSTOMER_SERVICE_API_URL:
-    process.env.NEXT_PUBLIC_CUSTOMER_SERVICE_API_URL,
   NEXT_PUBLIC_WSS_SERVICE_API_URL:
     process.env.NEXT_PUBLIC_WSS_SERVICE_API_URL,
 };
@@ -28,7 +25,6 @@ function readRequiredEnv(key: RequiredEnvKey) {
 export function getHostAppEnv() {
   return {
     inAppNotificationsApiUrl: readRequiredEnv("NEXT_PUBLIC_NUDGE_SERVICE_API_URL"),
-    projectScopeApiUrl: readRequiredEnv("NEXT_PUBLIC_CUSTOMER_SERVICE_API_URL"),
     inAppSocketUrl: readRequiredEnv("NEXT_PUBLIC_WSS_SERVICE_API_URL"),
   };
 }

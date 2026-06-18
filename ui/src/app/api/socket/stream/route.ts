@@ -12,12 +12,10 @@ function sseEvent(event: string, payload: unknown) {
 }
 
 export async function GET(request: NextRequest) {
-  const customerKey = request.nextUrl.searchParams.get("customerKey");
-  const orgId = request.nextUrl.searchParams.get("orgId");
   const jwtToken = request.nextUrl.searchParams.get("jwtToken");
   const wssBaseUrl = process.env.NEXT_PUBLIC_WSS_SERVICE_API_URL;
 
-  if (!customerKey || !orgId || !jwtToken || !wssBaseUrl) {
+  if (!jwtToken || !wssBaseUrl) {
     return new Response(
       sseEvent("error", {
         type: "error",
@@ -40,19 +38,13 @@ export async function GET(request: NextRequest) {
       let isClosed = false;
       const socket = io(wssBaseUrl, {
         path: SOCKET_IO_HANDSHAKE_PATH,
-        transports: ["polling", "websocket"],
+        transports: ["websocket"],
         forceNew: true,
         reconnection: true,
         reconnectionAttempts: 10,
         reconnectionDelay: 2000,
-        extraHeaders: {
-          "x-customer": customerKey,
-          "x-org-token": orgId,
-          "x-access-token": jwtToken,
-          "x-org-id": orgId,
-          "x-app-environment": process.env.NODE_ENV ?? "development",
-          "x-refresh-token": jwtToken,
-          "Content-Type": "application/json",
+        auth: {
+          token: `Bearer ${jwtToken}`,
         },
       });
 

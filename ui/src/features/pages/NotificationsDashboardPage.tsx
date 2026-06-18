@@ -20,7 +20,6 @@ import { getApiErrorMessage, getApiSuccessMessage } from "@/lib/api-feedback";
 export function NotificationsDashboardPage() {
   const client = useInAppSdkClient();
   const toast = useToast();
-  const customerId = useSdkStore((state) => state.customerId);
   const notifications = useSdkStore((state) => state.notifications);
   const notificationsLoading = useSdkStore((state) => state.notificationsLoading);
   const notificationsError = useSdkStore((state) => state.notificationsError);
@@ -42,10 +41,6 @@ export function NotificationsDashboardPage() {
     nextFilter?: NotificationReadFilter;
     shouldToast?: boolean;
   }) {
-    if (!customerId) {
-      return;
-    }
-
     const nextPage = options?.nextPage ?? page;
     const nextSize = options?.nextSize ?? size;
     const nextFilter = options?.nextFilter ?? filter;
@@ -54,18 +49,14 @@ export function NotificationsDashboardPage() {
     setNotificationsError(null);
 
     try {
-      const response = await fetchHostNotifications(
-        client,
-        customerId,
-        {
-          page: nextPage,
-          size: nextSize,
-          isRead:
-            nextFilter === "all"
-              ? undefined
-              : nextFilter === "read",
-        }
-      );
+      const response = await fetchHostNotifications(client, {
+        page: nextPage,
+        size: nextSize,
+        isRead:
+          nextFilter === "all"
+            ? undefined
+            : nextFilter === "read",
+      });
       setNotifications(response.notifications.map(mapSdkNotificationToUiItem));
       setHasMore(Boolean(response.metaData?.hasMore));
       setPage(response.metaData?.page ?? nextPage);
@@ -89,10 +80,6 @@ export function NotificationsDashboardPage() {
   const totalPages = Math.max(1, Math.ceil(totalCount / size));
 
   useEffect(() => {
-    if (!customerId) {
-      return;
-    }
-
     if (!hasMountedRef.current && notifications.length > 0 && page === 1 && size === 10 && filter === "all") {
       hasMountedRef.current = true;
       return;
@@ -100,17 +87,12 @@ export function NotificationsDashboardPage() {
 
     hasMountedRef.current = true;
     void handleRefresh();
-  }, [customerId, filter, page, size]);
+  }, [filter, page, size]);
 
   async function handleMarkNotificationAsRead(notificationId: string) {
-    if (!customerId) {
-      return;
-    }
-
     try {
       const response = await client.notifications.markAsRead({
         notificationId,
-        customerId,
       });
       markNotificationAsRead(notificationId);
       toast.success(getApiSuccessMessage(response, "Notification marked as read."));
@@ -122,14 +104,8 @@ export function NotificationsDashboardPage() {
   }
 
   async function handleMarkAllAsRead() {
-    if (!customerId) {
-      return;
-    }
-
     try {
-      const response = await client.notifications.markAllAsRead({
-        customerId,
-      });
+      const response = await client.notifications.markAllAsRead({});
       markAllAsRead();
       toast.success(getApiSuccessMessage(response, "All notifications marked as read."));
     } catch (error) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { io, Socket } from "socket.io-client";
 import {
   createHttpInAppNotificationTransport,
   createInAppNotificationSdkClient,
@@ -8,7 +9,6 @@ import {
 import type {
   CustomerPreferenceGroup,
   PreferenceChannelKey,
-  Customer,
   InAppNotification,
 } from "@sdk/shared/types";
 import type { SocketStatus } from "@/features/types/socket.types";
@@ -22,17 +22,12 @@ import type {
 import { getHostAppEnv } from "@/config/host-env";
 
 export interface HostSdkAuthConfig {
-  projectId: string;
-  orgId: string;
-  customerPoolId: string;
-  customerId: string;
+  customerUniqueCustomerId: string;
   jwtToken: string;
-  socketCustomerKey?: string;
 }
 
 export interface HostSdkRuntimeConfig {
   inAppNotificationsApiUrl: string;
-  projectScopeApiUrl: string;
   inAppSocketUrl: string;
 }
 
@@ -41,28 +36,10 @@ interface SocketBridgeResponse {
   message?: string;
 }
 
-interface SocketStreamMessage {
-  type: "connected" | "notification" | "error";
-  data?: unknown;
-  message?: string;
-}
-
 interface SocketEnvelope<TPayload = unknown> {
   event?: string;
   data?: TPayload;
   payload?: TPayload;
-  [key: string]: unknown;
-}
-
-interface CustomerAttributeField {
-  value?: unknown;
-  fieldName?: string;
-  fieldDisplayName?: string;
-  [key: string]: unknown;
-}
-
-interface CustomerApiEnvelope {
-  data?: Record<string, CustomerAttributeField>;
   [key: string]: unknown;
 }
 
@@ -267,25 +244,9 @@ export function normalizeIncomingNotification(payload: unknown): InAppNotificati
   return null;
 }
 
-const CUSTOMER_POOL_MODULE = "customer-pools";
 const INAPP_SOCKET_EVENT = "inAppMessage";
-let activeSocketStream: EventSource | null = null;
-
-function getCustomerFieldValue(customer: Customer, fieldName: string) {
-  const envelope = customer as CustomerApiEnvelope;
-  const field = envelope.data?.[fieldName];
-
-  if (field && typeof field === "object" && "value" in field) {
-    return field.value;
-  }
-
-  return customer.attributes?.find((attribute) => attribute.fieldName === fieldName)?.value;
-}
-
-function getCustomerUniqueCustomerId(customer: Customer) {
-  const value = getCustomerFieldValue(customer, "uniqueCustomerId");
-  return typeof value === "string" && value ? value : null;
-}
+const SOCKET_IO_HANDSHAKE_PATH = "/api/v1/wss/socket.io";
+let activeSocketClient: Socket | null = null;
 
 export function mapSdkNotificationToUiItem(
   notification: InAppNotification
@@ -362,28 +323,11 @@ export function mapSdkNotificationToUiItem(
   };
 }
 
-export function mapSdkCustomerToCustomerDetails(customer: Customer): CustomerDetails {
-  const firstName = getCustomerFieldValue(customer, "firstName");
-  const lastName = getCustomerFieldValue(customer, "lastName");
-  const email =
-    getCustomerFieldValue(customer, "emailId") ??
-    getCustomerFieldValue(customer, "email");
-  const fallbackName = getCustomerFieldValue(customer, "name");
-  const fullName = [firstName, lastName]
-    .filter((part): part is string => typeof part === "string" && Boolean(part.trim()))
-    .join(" ");
-
+export function buildCustomerDetails(uniqueCustomerId: string): CustomerDetails {
   return {
-    id:
-      customer.id ||
-      getCustomerUniqueCustomerId(customer) ||
-      (typeof fallbackName === "string" ? fallbackName : "Unknown Customer"),
-    name:
-      fullName ||
-      (typeof fallbackName === "string" && fallbackName
-        ? fallbackName
-        : "Taylor Morgan"),
-    email: typeof email === "string" ? email : "taylor.morgan@demo.dokaai.ai",
+    id: uniqueCustomerId,
+    name: uniqueCustomerId,
+    email: `${uniqueCustomerId.toLowerCase()}@demo.dokaai.ai`,
   };
 }
 
@@ -393,9 +337,7 @@ export function createHostInAppSdkClient(auth: HostSdkAuthConfig) {
   return createInAppNotificationSdkClient({
     transport: createHttpInAppNotificationTransport({
       inAppNotificationsBaseUrl: env.inAppNotificationsApiUrl,
-      projectScopeBaseUrl: env.projectScopeApiUrl,
-      accessToken: auth.jwtToken,
-      orgId: auth.orgId,
+      authToken: auth.jwtToken,
     }),
   });
 }
@@ -404,22 +346,8 @@ export function getHostSdkRuntimeConfig(): HostSdkRuntimeConfig {
   return getHostAppEnv();
 }
 
-export async function fetchHostCustomerDetails(
-  client: InAppNotificationSdkClient,
-  auth: HostSdkAuthConfig
-) {
-  return client.customers.getById({
-    projectId: auth.projectId,
-    customerPoolModule: CUSTOMER_POOL_MODULE,
-    customerPoolId: auth.customerPoolId,
-    customerId: auth.customerId,
-    attributeTypes: "all",
-  });
-}
-
 export async function fetchHostNotifications(
   client: InAppNotificationSdkClient,
-  customerId: string,
   options: {
     page?: number;
     size?: number;
@@ -427,7 +355,6 @@ export async function fetchHostNotifications(
   } = {}
 ) {
   const response = await client.notifications.getAll({
-    customerId,
     page: options.page ?? 1,
     size: options.size ?? 10,
     isRead: options.isRead,
@@ -498,10 +425,9 @@ export async function fetchHostNotifications(
 }
 
 export async function fetchHostUnreadCount(
-  client: InAppNotificationSdkClient,
-  customerId: string
+  client: InAppNotificationSdkClient
 ) {
-  const response = await client.notifications.getUnreadCount({ customerId });
+  const response = await client.notifications.getUnreadCount({});
 
   if (typeof response === "number") {
     return response;
@@ -536,12 +462,10 @@ export async function fetchHostUnreadCount(
 
 export async function fetchHostPreferences(
   client: InAppNotificationSdkClient,
-  projectId: string,
-  customerId: string
+  projectId?: string
 ) {
   const response = await client.preferences.getAll({
     projectId,
-    customerId,
   });
 
   if (Array.isArray(response)) {
@@ -617,41 +541,61 @@ export function buildSaveTopicPreferencePayload(topic: UiPreferenceTopic) {
 }
 
 export function disconnectHostSocket() {
-  if (activeSocketStream) {
-    activeSocketStream.close();
-    activeSocketStream = null;
+  if (activeSocketClient) {
+    activeSocketClient.disconnect();
+    activeSocketClient = null;
   }
 }
 
 export async function connectHostSocket(
   auth: HostSdkAuthConfig,
   onStatusChange?: (status: SocketStatus) => void,
-  timeoutMs = 8000
+  timeoutMs = 15000
 ) {
   onStatusChange?.("connecting");
+  const env = getHostAppEnv();
 
-  const response = await fetch("/api/socket/connect", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      customerKey: auth.socketCustomerKey ?? auth.customerId,
-      orgId: auth.orgId,
-      jwtToken: auth.jwtToken,
-      timeoutMs,
-    }),
+  return new Promise<SocketBridgeResponse>((resolve, reject) => {
+    const socket = io(env.inAppSocketUrl, {
+      path: SOCKET_IO_HANDSHAKE_PATH,
+      transports: ["websocket"],
+      forceNew: true,
+      timeout: timeoutMs,
+      auth: {
+        token: `Bearer ${auth.jwtToken}`,
+      },
+    });
+
+    const cleanup = () => {
+      socket.off("connect", handleConnect);
+      socket.off("connect_error", handleConnectError);
+    };
+
+    const handleConnect = () => {
+      cleanup();
+      socket.disconnect();
+      onStatusChange?.("connected");
+      resolve({ success: true });
+    };
+
+    const handleConnectError = (error: Error & { description?: unknown }) => {
+      cleanup();
+      socket.disconnect();
+      onStatusChange?.("error");
+      reject(
+        new Error(
+          typeof error?.message === "string" && error.message
+            ? error.message
+            : typeof error?.description === "string"
+              ? error.description
+              : "Unable to establish WebSocket connection."
+        )
+      );
+    };
+
+    socket.on("connect", handleConnect);
+    socket.on("connect_error", handleConnectError);
   });
-
-  const payload = (await response.json().catch(() => null)) as SocketBridgeResponse | null;
-
-  if (!response.ok || !payload?.success) {
-    onStatusChange?.("error");
-    throw new Error(payload?.message || "Unable to establish WebSocket connection.");
-  }
-
-  onStatusChange?.("connected");
-  return payload;
 }
 
 export function subscribeToInAppMessages<TPayload = unknown>(
@@ -660,26 +604,29 @@ export function subscribeToInAppMessages<TPayload = unknown>(
   onStatusChange?: (status: SocketStatus) => void
 ) {
   disconnectHostSocket();
-
-  const searchParams = new URLSearchParams({
-    customerKey: auth.socketCustomerKey ?? auth.customerId,
-    orgId: auth.orgId,
-    jwtToken: auth.jwtToken,
+  const env = getHostAppEnv();
+  const socket = io(env.inAppSocketUrl, {
+    path: SOCKET_IO_HANDSHAKE_PATH,
+    transports: ["websocket"],
+    forceNew: true,
+    reconnection: true,
+    reconnectionAttempts: 10,
+    reconnectionDelay: 2000,
+    auth: {
+      token: `Bearer ${auth.jwtToken}`,
+    },
   });
-
-  const stream = new EventSource(`/api/socket/stream?${searchParams.toString()}`);
-  activeSocketStream = stream;
+  activeSocketClient = socket;
 
   const handleConnected = () => {
     onStatusChange?.("connected");
   };
 
-  const handleNotification = (event: MessageEvent<string>) => {
+  const handleNotification = (payload: unknown) => {
     try {
-      const message = JSON.parse(event.data) as SocketStreamMessage;
-      listener((message.data ?? message) as TPayload);
+      listener(payload as TPayload);
     } catch {
-      listener(event.data as TPayload);
+      listener(payload as TPayload);
     }
   };
 
@@ -687,26 +634,20 @@ export function subscribeToInAppMessages<TPayload = unknown>(
     onStatusChange?.("error");
   };
 
-  stream.addEventListener("connected", handleConnected as EventListener);
-  stream.addEventListener(INAPP_SOCKET_EVENT, handleNotification as EventListener);
-  stream.onerror = handleError;
+  socket.on("connect", handleConnected);
+  socket.on(INAPP_SOCKET_EVENT, handleNotification);
+  socket.on("connect_error", handleError);
+  socket.on("disconnect", handleError);
 
   return () => {
-    stream.removeEventListener("connected", handleConnected as EventListener);
-    stream.removeEventListener(INAPP_SOCKET_EVENT, handleNotification as EventListener);
-    stream.close();
+    socket.off("connect", handleConnected);
+    socket.off(INAPP_SOCKET_EVENT, handleNotification);
+    socket.off("connect_error", handleError);
+    socket.off("disconnect", handleError);
+    socket.disconnect();
 
-    if (activeSocketStream === stream) {
-      activeSocketStream = null;
+    if (activeSocketClient === socket) {
+      activeSocketClient = null;
     }
   };
-}
-
-export function getSocketCustomerKeyFromCustomer(customer: Customer) {
-  return (
-    getCustomerUniqueCustomerId(customer) ||
-    customer.externalId ||
-    customer.id ||
-    null
-  );
 }

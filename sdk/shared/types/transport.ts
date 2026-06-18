@@ -1,4 +1,3 @@
-import { GetCustomerByIdParams } from './customer';
 import {
   GetUnreadInAppNotificationsCountParams,
   GetAllInAppNotificationsParams,
@@ -12,7 +11,6 @@ import {
   SaveGroupPreferenceParams,
   SaveTopicPreferenceParams,
 } from './preference';
-import { Customer } from './customer';
 
 export interface InAppNotificationTransport {
   getAllInAppNotifications(
@@ -36,14 +34,13 @@ export interface InAppNotificationTransport {
   saveTopicPreference(
     params: SaveTopicPreferenceParams
   ): Promise<unknown>;
-  getCustomerById(params: GetCustomerByIdParams): Promise<Customer>;
 }
 
 export interface HttpTransportConfig {
   inAppNotificationsBaseUrl: string;
-  projectScopeBaseUrl: string;
+  projectScopeBaseUrl?: string;
   accessToken?: string;
-  orgId?: string;
+  authToken?: string;
   fetch?: typeof fetch;
   defaultHeaders?: HeadersInit;
 }

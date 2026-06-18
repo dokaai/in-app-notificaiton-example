@@ -13,12 +13,10 @@ import { AppLogo } from "@/features/components/shared/AppLogo";
 import { useToast } from "@/features/hooks/useToast";
 import { useSdkStore } from "@/features/store/useSdkStore";
 import { getApiErrorMessage, getApiSuccessMessage } from "@/lib/api-feedback";
+import { buildCustomerJwt } from "@/lib/customer-jwt";
 import {
+  buildCustomerDetails,
   connectHostSocket,
-  createHostInAppSdkClient,
-  fetchHostCustomerDetails,
-  getSocketCustomerKeyFromCustomer,
-  mapSdkCustomerToCustomerDetails,
 } from "@/lib/inapp-sdk";
 
 const FEATURES = [
@@ -45,19 +43,19 @@ export function LoginScreen() {
   const login = useSdkStore((state) => state.login);
   const setCustomerDetails = useSdkStore((state) => state.setCustomerDetails);
   const setSocketStatus = useSdkStore((state) => state.setSocketStatus);
-  const [projectId, setProjectId] = useState("");
-  const [orgId, setOrgId] = useState("");
-  const [customerPoolId, setCustomerPoolId] = useState("");
-  const [customerId, setCustomerId] = useState("");
-  const [jwtToken, setJwtToken] = useState("");
+  const [customerJwtPrivateKey, setCustomerJwtPrivateKey] = useState("");
+  const [customerSigningKeyId, setCustomerSigningKeyId] = useState("");
+  const [customerUniqueCustomerId, setCustomerUniqueCustomerId] = useState("");
+  const [customerWorkspaceId, setCustomerWorkspaceId] = useState("");
+  const [customerProductSpaceCode, setCustomerProductSpaceCode] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
   const [progressError, setProgressError] = useState<string | null>(null);
   const [progressSteps, setProgressSteps] = useState<LoginProgressStep[]>([
     {
       key: "customer",
-      title: "Fetch customer details",
-      description: "Validating the customer against the customer service.",
+      title: "Mint customer JWT",
+      description: "Creating the customer bearer token from the provided signing values.",
       status: "idle",
     },
     {
@@ -70,13 +68,20 @@ export function LoginScreen() {
 
   const errors = useMemo(
     () => ({
-      projectId: submitted && !projectId.trim(),
-      orgId: submitted && !orgId.trim(),
-      customerPoolId: submitted && !customerPoolId.trim(),
-      customerId: submitted && !customerId.trim(),
-      jwtToken: submitted && !jwtToken.trim(),
+      customerJwtPrivateKey: submitted && !customerJwtPrivateKey.trim(),
+      customerSigningKeyId: submitted && !customerSigningKeyId.trim(),
+      customerUniqueCustomerId: submitted && !customerUniqueCustomerId.trim(),
+      customerWorkspaceId: submitted && !customerWorkspaceId.trim(),
+      customerProductSpaceCode: submitted && !customerProductSpaceCode.trim(),
     }),
-    [customerId, customerPoolId, jwtToken, orgId, projectId, submitted]
+    [
+      customerJwtPrivateKey,
+      customerProductSpaceCode,
+      customerSigningKeyId,
+      customerUniqueCustomerId,
+      customerWorkspaceId,
+      submitted,
+    ]
   );
 
   function updateStep(
@@ -94,8 +99,8 @@ export function LoginScreen() {
     setProgressSteps([
       {
         key: "customer",
-        title: "Fetch customer details",
-        description: "Validating the customer against the customer service.",
+        title: "Mint customer JWT",
+        description: "Creating the customer bearer token from the provided signing values.",
         status: "idle",
       },
       {
@@ -108,11 +113,11 @@ export function LoginScreen() {
   }
 
   const initializeSession = useCallback(async (auth: {
-    projectId: string;
-    orgId: string;
-    customerPoolId: string;
-    customerId: string;
-    jwtToken: string;
+    customerJwtPrivateKey: string;
+    customerSigningKeyId: string;
+    customerUniqueCustomerId: string;
+    customerWorkspaceId: string;
+    customerProductSpaceCode: string;
   }) => {
     setShowProgress(true);
     setProgressError(null);
@@ -120,8 +125,8 @@ export function LoginScreen() {
     setProgressSteps([
       {
         key: "customer",
-        title: "Fetch customer details",
-        description: "Validating the customer against the customer service.",
+        title: "Mint customer JWT",
+        description: "Creating the customer bearer token from the provided signing values.",
         status: "loading",
       },
       {
@@ -133,25 +138,32 @@ export function LoginScreen() {
     ]);
 
     try {
-      const client = createHostInAppSdkClient(auth);
-      const customer = await fetchHostCustomerDetails(client, auth);
-      toast.success(getApiSuccessMessage(customer, "Customer details fetched successfully."));
+      const jwtToken = await buildCustomerJwt({
+        privateKey: auth.customerJwtPrivateKey,
+        signingKeyId: auth.customerSigningKeyId,
+        uniqueCustomerId: auth.customerUniqueCustomerId,
+        workspaceId: auth.customerWorkspaceId,
+        productSpaceCode: auth.customerProductSpaceCode,
+      });
       updateStep("customer", "success");
+      toast.success("Customer JWT minted successfully.");
 
       updateStep("socket", "loading");
-      const uniqueCustomerId = getSocketCustomerKeyFromCustomer(customer) ?? auth.customerId;
       const socketResponse = await connectHostSocket(
         {
-          ...auth,
-          socketCustomerKey: uniqueCustomerId,
+          customerUniqueCustomerId: auth.customerUniqueCustomerId,
+          jwtToken,
         },
         setSocketStatus
       );
       toast.success(getApiSuccessMessage(socketResponse, "WebSocket connection established."));
       updateStep("socket", "success");
 
-      login(auth);
-      setCustomerDetails(mapSdkCustomerToCustomerDetails(customer));
+      login({
+        ...auth,
+        jwtToken,
+      });
+      setCustomerDetails(buildCustomerDetails(auth.customerUniqueCustomerId));
       setSocketStatus("connected");
     } catch (error) {
       const message = getApiErrorMessage(error, "Unable to initialize the session.");
@@ -164,28 +176,28 @@ export function LoginScreen() {
         )
       );
     }
-  }, [login, setCustomerDetails, setSocketStatus]);
+  }, [login, setCustomerDetails, setSocketStatus, toast]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitted(true);
 
     if (
-      !projectId.trim() ||
-      !orgId.trim() ||
-      !customerPoolId.trim() ||
-      !customerId.trim() ||
-      !jwtToken.trim()
+      !customerJwtPrivateKey.trim() ||
+      !customerSigningKeyId.trim() ||
+      !customerUniqueCustomerId.trim() ||
+      !customerWorkspaceId.trim() ||
+      !customerProductSpaceCode.trim()
     ) {
       return;
     }
 
     await initializeSession({
-      projectId: projectId.trim(),
-      orgId: orgId.trim(),
-      customerPoolId: customerPoolId.trim(),
-      customerId: customerId.trim(),
-      jwtToken: jwtToken.trim(),
+      customerJwtPrivateKey: customerJwtPrivateKey.trim(),
+      customerSigningKeyId: customerSigningKeyId.trim(),
+      customerUniqueCustomerId: customerUniqueCustomerId.trim(),
+      customerWorkspaceId: customerWorkspaceId.trim(),
+      customerProductSpaceCode: customerProductSpaceCode.trim(),
     });
   }
 
@@ -202,7 +214,7 @@ export function LoginScreen() {
                   DokaaI In-App Notifications
                 </h1>
                 <p className="max-w-lg text-base leading-7 text-muted-foreground">
-                  A clean SDK demo for viewing in-app notifications with a production-ready UI structure, reusable components, and integration-ready architecture.
+                  Use your customer signing values to mint a bearer token locally and preview the in-app notification experience.
                 </p>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -229,11 +241,11 @@ export function LoginScreen() {
                 <LoginProgressTracker
                   onRetry={() =>
                     void initializeSession({
-                      projectId: projectId.trim(),
-                      orgId: orgId.trim(),
-                      customerPoolId: customerPoolId.trim(),
-                      customerId: customerId.trim(),
-                      jwtToken: jwtToken.trim(),
+                      customerJwtPrivateKey: customerJwtPrivateKey.trim(),
+                      customerSigningKeyId: customerSigningKeyId.trim(),
+                      customerUniqueCustomerId: customerUniqueCustomerId.trim(),
+                      customerWorkspaceId: customerWorkspaceId.trim(),
+                      customerProductSpaceCode: customerProductSpaceCode.trim(),
                     })
                   }
                   onBack={resetProgress}
@@ -244,76 +256,79 @@ export function LoginScreen() {
                   <CardHeader>
                     <CardTitle className="text-3xl text-center">Sign in</CardTitle>
                     <CardDescription className="text-center">
-                      Enter demo identifiers to preview the in-app notification experience.
+                      Enter the customer JWT signing values to start the demo session.
                     </CardDescription>
                   </CardHeader>
                   <form className="space-y-3" onSubmit={handleSubmit}>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-foreground" htmlFor="customerJwtPrivateKey">
+                        Customer JWT Private Key
+                      </label>
+                      <textarea
+                        id="customerJwtPrivateKey"
+                        value={customerJwtPrivateKey}
+                        onChange={(event) => setCustomerJwtPrivateKey(event.target.value)}
+                        placeholder='-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----'
+                        aria-invalid={errors.customerJwtPrivateKey}
+                        className="min-h-32 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                      />
+                      {errors.customerJwtPrivateKey ? <p className="text-xs text-red-600">private key is required.</p> : null}
+                    </div>
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div className="space-y-1">
-                        <label className="text-sm font-medium text-foreground" htmlFor="projectId">
-                          Project ID
+                        <label className="text-sm font-medium text-foreground" htmlFor="customerSigningKeyId">
+                          Customer Signing Key ID
                         </label>
                         <Input
-                          id="projectId"
-                          value={projectId}
-                          onChange={(event) => setProjectId(event.target.value)}
-                          placeholder="Enter projectId"
-                          aria-invalid={errors.projectId}
+                          id="customerSigningKeyId"
+                          value={customerSigningKeyId}
+                          onChange={(event) => setCustomerSigningKeyId(event.target.value)}
+                          placeholder="Enter signing key id"
+                          aria-invalid={errors.customerSigningKeyId}
                         />
-                        {errors.projectId ? <p className="text-xs text-red-600">projectId is required.</p> : null}
+                        {errors.customerSigningKeyId ? <p className="text-xs text-red-600">signing key id is required.</p> : null}
                       </div>
                       <div className="space-y-1">
-                        <label className="text-sm font-medium text-foreground" htmlFor="orgId">
-                          Org ID
+                        <label className="text-sm font-medium text-foreground" htmlFor="customerUniqueCustomerId">
+                          Unique Customer ID
                         </label>
                         <Input
-                          id="orgId"
-                          value={orgId}
-                          onChange={(event) => setOrgId(event.target.value)}
-                          placeholder="Enter orgId"
-                          aria-invalid={errors.orgId}
+                          id="customerUniqueCustomerId"
+                          value={customerUniqueCustomerId}
+                          onChange={(event) => setCustomerUniqueCustomerId(event.target.value)}
+                          placeholder="Enter unique customer id"
+                          aria-invalid={errors.customerUniqueCustomerId}
                         />
-                        {errors.orgId ? <p className="text-xs text-red-600">orgId is required.</p> : null}
+                        {errors.customerUniqueCustomerId ? <p className="text-xs text-red-600">unique customer id is required.</p> : null}
                       </div>
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-foreground" htmlFor="customerPoolId">
-                        Customer Pool ID
-                      </label>
-                      <Input
-                        id="customerPoolId"
-                        value={customerPoolId}
-                        onChange={(event) => setCustomerPoolId(event.target.value)}
-                        placeholder="Enter customerPoolId"
-                        aria-invalid={errors.customerPoolId}
-                      />
-                      {errors.customerPoolId ? <p className="text-xs text-red-600">customerPoolId is required.</p> : null}
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-foreground" htmlFor="customerId">
-                        Customer ID
-                      </label>
-                      <Input
-                        id="customerId"
-                        value={customerId}
-                        onChange={(event) => setCustomerId(event.target.value)}
-                        placeholder="Enter customerId"
-                        aria-invalid={errors.customerId}
-                      />
-                      {errors.customerId ? <p className="text-xs text-red-600">customerId is required.</p> : null}
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-foreground" htmlFor="jwtToken">
-                        JWT Token
-                      </label>
-                      <Input
-                        id="jwtToken"
-                        value={jwtToken}
-                        onChange={(event) => setJwtToken(event.target.value)}
-                        placeholder="Paste JWT token"
-                        aria-invalid={errors.jwtToken}
-                      />
-                      {errors.jwtToken ? <p className="text-xs text-red-600">jwtToken is required.</p> : null}
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium text-foreground" htmlFor="customerWorkspaceId">
+                          Customer Workspace ID
+                        </label>
+                        <Input
+                          id="customerWorkspaceId"
+                          value={customerWorkspaceId}
+                          onChange={(event) => setCustomerWorkspaceId(event.target.value)}
+                          placeholder="Enter workspace id"
+                          aria-invalid={errors.customerWorkspaceId}
+                        />
+                        {errors.customerWorkspaceId ? <p className="text-xs text-red-600">workspace id is required.</p> : null}
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium text-foreground" htmlFor="customerProductSpaceCode">
+                          Customer Product Space Code
+                        </label>
+                        <Input
+                          id="customerProductSpaceCode"
+                          value={customerProductSpaceCode}
+                          onChange={(event) => setCustomerProductSpaceCode(event.target.value)}
+                          placeholder="Enter product space code"
+                          aria-invalid={errors.customerProductSpaceCode}
+                        />
+                        {errors.customerProductSpaceCode ? <p className="text-xs text-red-600">product space code is required.</p> : null}
+                      </div>
                     </div>
                     <div className="pt-5">
                       <Button className="w-full" size="lg" type="submit">

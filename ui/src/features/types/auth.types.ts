@@ -1,8 +1,9 @@
 export interface LoginPayload {
-  projectId: string;
-  orgId: string;
-  customerPoolId: string;
-  customerId: string;
+  customerJwtPrivateKey: string;
+  customerSigningKeyId: string;
+  customerUniqueCustomerId: string;
+  customerWorkspaceId: string;
+  customerProductSpaceCode: string;
   jwtToken: string;
 }
 

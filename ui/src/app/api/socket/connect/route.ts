@@ -6,8 +6,6 @@ export const runtime = "nodejs";
 const SOCKET_IO_HANDSHAKE_PATH = "/api/v1/wss/socket.io";
 
 interface SocketConnectRequest {
-  customerKey: string;
-  orgId: string;
   jwtToken: string;
   timeoutMs?: number;
 }
@@ -16,7 +14,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as SocketConnectRequest;
 
-    if (!body.customerKey || !body.orgId || !body.jwtToken) {
+    if (!body.jwtToken) {
       return NextResponse.json(
         {
           success: false,
@@ -43,17 +41,11 @@ export async function POST(request: NextRequest) {
     const result = await new Promise<{ success: true }>((resolve, reject) => {
       const socket = io(wssBaseUrl, {
         path: SOCKET_IO_HANDSHAKE_PATH,
-        transports: ["polling", "websocket"],
+        transports: ["websocket"],
         forceNew: true,
         timeout: timeoutMs,
-        extraHeaders: {
-          "x-customer": body.customerKey,
-          "x-org-token": body.orgId,
-          "x-access-token": body.jwtToken,
-          "x-org-id": body.orgId,
-          "x-app-environment": process.env.NODE_ENV ?? "development",
-          "x-refresh-token": body.jwtToken,
-          "Content-Type": "application/json",
+        auth: {
+          token: `Bearer ${body.jwtToken}`,
         },
       });
 

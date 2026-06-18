@@ -1,13 +1,11 @@
 export const API_ENDPOINTS = {
   GET_ALL_INAPP_NOTIFICATIONS: ({
     baseUrl,
-    customerId,
     page = 1,
     size = 10,
     isRead,
   }: {
     baseUrl: string;
-    customerId: string;
     page?: number;
     size?: number;
     isRead?: boolean;
@@ -21,89 +19,48 @@ export const API_ENDPOINTS = {
       params.set('isRead', String(isRead));
     }
 
-    return `${baseUrl.replace(/\/$/, '')}/in-app-notifications/customer/${customerId}?${params.toString()}`;
+    return `${baseUrl.replace(/\/$/, '')}/nudge/in-app-notifications/?${params.toString()}`;
   },
 
   MARK_INAPP_NOTIFICATION_AS_READ: ({
     baseUrl,
     notificationId,
-    customerId,
   }: {
     baseUrl: string;
     notificationId: string;
-    customerId: string;
   }) =>
-    `${baseUrl.replace(/\/$/, '')}/in-app-notifications/${notificationId}/customer/${customerId}`,
+    `${baseUrl.replace(/\/$/, '')}/nudge/in-app-notifications/${notificationId}/read`,
 
-  MARK_ALL_INAPP_NOTIFICATIONS_AS_READ: ({
-    baseUrl,
-    customerId,
-  }: {
-    baseUrl: string;
-    customerId: string;
-  }) =>
-    `${baseUrl.replace(/\/$/, '')}/in-app-notifications/customer/${customerId}/read-all`,
+  MARK_ALL_INAPP_NOTIFICATIONS_AS_READ: ({ baseUrl }: { baseUrl: string }) =>
+    `${baseUrl.replace(/\/$/, '')}/nudge/in-app-notifications/read-all`,
 
-  GET_UNREAD_INAPP_NOTIFICATIONS_COUNT: ({
-    baseUrl,
-    customerId,
-  }: {
-    baseUrl: string;
-    customerId: string;
-  }) =>
-    `${baseUrl.replace(/\/$/, '')}/in-app-notifications/customer/${customerId}/unread-count`,
+  GET_UNREAD_INAPP_NOTIFICATIONS_COUNT: ({ baseUrl }: { baseUrl: string }) =>
+    `${baseUrl.replace(/\/$/, '')}/nudge/in-app-notifications/unread-count`,
 
   GET_CUSTOMER_PREFERENCES: ({
     baseUrl,
     projectId,
-    customerId,
   }: {
     baseUrl: string;
-    projectId: string;
-    customerId: string;
+    projectId?: string;
   }) =>
-    `${baseUrl.replace(/\/$/, '')}/projects/${projectId}/customer-preferences/customer/${customerId}`,
+    `${baseUrl.replace(/\/$/, '')}/nudge/customer-preferences/`,
 
   SAVE_GROUP_PREFERENCE: ({
     baseUrl,
-    projectId,
-    customerId,
     groupId,
   }: {
     baseUrl: string;
-    projectId: string;
-    customerId: string;
     groupId: string;
   }) =>
-    `${baseUrl.replace(/\/$/, '')}/projects/${projectId}/customer-preferences/customer/${customerId}/save-group-preference/${groupId}`,
+    `${baseUrl.replace(/\/$/, '')}/nudge/customer-preferences/notification-groups/${groupId}`,
 
   SAVE_TOPIC_PREFERENCE: ({
     baseUrl,
-    projectId,
-    customerId,
     topicId,
   }: {
     baseUrl: string;
-    projectId: string;
-    customerId: string;
     topicId: string;
   }) =>
-    `${baseUrl.replace(/\/$/, '')}/projects/${projectId}/customer-preferences/customer/${customerId}/save-topic-preference/${topicId}`,
-
-  GET_CUSTOMER_BY_ID: ({
-    baseUrl,
-    projectId,
-    customerPoolModule,
-    customerPoolId,
-    customerId,
-    attributeTypes = 'all',
-  }: {
-    baseUrl: string;
-    projectId: string;
-    customerPoolModule: string;
-    customerPoolId: string;
-    customerId: string;
-    attributeTypes?: string;
-  }) =>
-    `${baseUrl.replace(/\/$/, '')}/projects/${projectId}/${customerPoolModule}/${customerPoolId}/customers/${customerId}?attributeTypes=${attributeTypes}`,
+    `${baseUrl.replace(/\/$/, '')}/nudge/customer-preferences/notification-topics/${topicId}`,
 };

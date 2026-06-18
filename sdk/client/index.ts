@@ -9,6 +9,5 @@ export {
   createHttpInAppNotificationTransport,
   HttpInAppNotificationTransport,
 } from './transports/http-transport';
-export { CustomersService } from './services/customers';
 export { InAppNotificationsService } from './services/inapp-notifications';
 export { PreferencesService } from './services/preferences';

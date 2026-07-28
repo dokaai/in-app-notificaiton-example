@@ -1,59 +1,48 @@
-# InApp Notification SDK
+# In-App Notification Demo
 
-Small workspace for:
+Small workspace for a demo frontend and its BFF/backend integration.
 
-- a reusable in-app notification SDK package
-- a standalone Next.js host app used to test and track notifications
+The old reusable package flow has been removed. The frontend talks only to
+local Next.js API routes, and those routes call the DokaAI notification
+services through backend modules.
 
 ## Structure
 
-- `sdk/`
-  - reusable package code
-  - transport layer, React exports, shared types
-- `ui/`
-  - standalone Next.js host application
-  - owns frontend screens and later backend/socket integration
+- `backend/`
+  - backend/BFF modules
+  - customer JWT signing
+  - notification/preference API integrations
+- `frontend/`
+  - standalone Next.js frontend
+  - screen state, dashboard, preferences, socket status
 
-## Current scope
+## Flow
 
-- transport-driven SDK client
-- optional HTTP transport implementation
-- get all in-app notifications
-- get customer by ID
-- direct socket connection helper
+```txt
+Frontend form
+  -> /api/auth/customer-token
+    -> backend signs the customer JWT
+      -> frontend receives the bearer token
 
-## Recommended SDK usage
+Frontend screens
+  -> /api/notifications and /api/preferences routes
+    -> backend attaches Authorization: Bearer <token>
+      -> DokaAI APIs
 
-Create a transport in the host app, then pass it into the SDK client.
-
-```ts
-import {
-  createHttpInAppNotificationTransport,
-  createInAppNotificationSdkClient,
-} from 'inapp-notification-sdk';
-
-const transport = createHttpInAppNotificationTransport({
-  inAppNotificationsBaseUrl: process.env.NEXT_PUBLIC_INAPP_NOTIFICATIONS_API_URL!,
-  projectScopeBaseUrl: process.env.NEXT_PUBLIC_PROJECT_SCOPE_API_URL!,
-  accessToken: 'token-if-needed',
-});
-
-const client = createInAppNotificationSdkClient({ transport });
+Frontend socket UI
+  -> direct Socket.IO connection
+    -> uses Bearer token for socket auth
 ```
 
-Socket usage stays explicit:
+## Local App
 
-```ts
-import { createSocketConnection } from 'inapp-notification-sdk';
+Run the frontend from `frontend/`:
 
-const socket = createSocketConnection({
-  url: process.env.NEXT_PUBLIC_INAPP_SOCKET_URL!,
-});
+```bash
+npm run dev
 ```
 
-## Notes
+Required environment variables:
 
-- The SDK no longer depends on backend env URLs by default.
-- The consuming app controls transport strategy.
-- You can use direct backend calls or your own Next.js `app/api` BFF without changing the UI layer.
-# in-app-notificaiton-example
+- `NUDGE_SERVICE_API_URL`
+- `NEXT_PUBLIC_WSS_SERVICE_API_URL` - accepts either a socket host such as `https://example.com` or a mounted Socket.IO endpoint such as `https://example.com/realtime/socket.io`

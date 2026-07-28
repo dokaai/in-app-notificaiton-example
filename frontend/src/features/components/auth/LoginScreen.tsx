@@ -1,7 +1,7 @@
 "use client";
 
-import { ShieldCheck, Sparkles, Users, Zap } from "lucide-react";
-import { FormEvent, useCallback, useMemo, useState } from "react";
+import { ShieldCheck, Sparkles, Upload, Users, Zap } from "lucide-react";
+import { ChangeEvent, FormEvent, useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,36 @@ const FEATURES = [
     title: "Simple BFF demo",
   },
 ];
+
+interface ParsedAuthKeyFile {
+  privateKey?: string;
+  signingKeyId?: string;
+  uniqueCustomerId?: string;
+  workspaceId?: string;
+  productSpaceCode?: string;
+}
+
+function readKeyValue(content: string, key: string) {
+  const match = content.match(new RegExp(`^${key}=([^\\n\\r]+)`, "im"));
+  return match?.[1]?.trim();
+}
+
+function parseCustomerAuthKeyFile(content: string): ParsedAuthKeyFile {
+  const normalizedContent = content.replace(/\r\n/g, "\n");
+  const privateKey = normalizedContent.match(
+    /-----BEGIN PRIVATE KEY-----[\s\S]*?-----END PRIVATE KEY-----/
+  )?.[0];
+
+  return {
+    privateKey,
+    signingKeyId: readKeyValue(normalizedContent, "signingKeyId"),
+    uniqueCustomerId:
+      readKeyValue(normalizedContent, "uniqueCustomerId") ??
+      readKeyValue(normalizedContent, "customerUniqueCustomerId"),
+    workspaceId: readKeyValue(normalizedContent, "workspaceId"),
+    productSpaceCode: readKeyValue(normalizedContent, "productSpaceCode"),
+  };
+}
 
 export function LoginScreen() {
   const toast = useToast();
@@ -108,6 +138,55 @@ export function LoginScreen() {
         status: "idle",
       },
     ]);
+  }
+
+  async function handleAuthKeyFileUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    try {
+      const parsedFile = parseCustomerAuthKeyFile(await file.text());
+      let populatedFieldsCount = 0;
+
+      if (parsedFile.privateKey) {
+        setCustomerJwtPrivateKey(parsedFile.privateKey);
+        populatedFieldsCount += 1;
+      }
+
+      if (parsedFile.signingKeyId) {
+        setCustomerSigningKeyId(parsedFile.signingKeyId);
+        populatedFieldsCount += 1;
+      }
+
+      if (parsedFile.uniqueCustomerId) {
+        setCustomerUniqueCustomerId(parsedFile.uniqueCustomerId);
+        populatedFieldsCount += 1;
+      }
+
+      if (parsedFile.workspaceId) {
+        setCustomerWorkspaceId(parsedFile.workspaceId);
+        populatedFieldsCount += 1;
+      }
+
+      if (parsedFile.productSpaceCode) {
+        setCustomerProductSpaceCode(parsedFile.productSpaceCode);
+        populatedFieldsCount += 1;
+      }
+
+      if (populatedFieldsCount === 0) {
+        toast.error("No supported auth values found in the uploaded file.");
+        return;
+      }
+
+      setSubmitted(false);
+      toast.success(`${populatedFieldsCount} field${populatedFieldsCount === 1 ? "" : "s"} filled from file.`);
+    } catch {
+      toast.error("Unable to read the uploaded auth file.");
+    }
   }
 
   const initializeSession = useCallback(async (auth: {
@@ -259,6 +338,25 @@ export function LoginScreen() {
                     </CardDescription>
                   </CardHeader>
                   <form className="space-y-3" onSubmit={handleSubmit}>
+                    <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50/70 p-4">
+                      <label
+                        className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-foreground transition hover:bg-muted"
+                        htmlFor="customerAuthKeyFile"
+                      >
+                        <Upload className="h-4 w-4" />
+                        Upload File
+                      </label>
+                      <input
+                        id="customerAuthKeyFile"
+                        type="file"
+                        accept=".txt,text/plain"
+                        className="sr-only"
+                        onChange={(event) => void handleAuthKeyFileUpload(event)}
+                      />
+                      <p className="mt-2 text-center text-xs text-muted-foreground">
+                        Fields found in the file will be filled automatically. Missing values can still be entered manually.
+                      </p>
+                    </div>
                     <div className="space-y-1">
                       <label className="text-sm font-medium text-foreground" htmlFor="customerJwtPrivateKey">
                         Customer JWT Private Key

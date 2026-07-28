@@ -72,6 +72,8 @@ The sign-in form needs:
 
 These details are sent to the app API to create a customer token. The browser does not create the token by itself.
 
+You can also upload a DokaAI customer auth key `.txt` file on the sign-in screen. The app will fill any values it finds in the file, and you can manually enter anything that is missing.
+
 ## How Requests Work
 
 ```txt

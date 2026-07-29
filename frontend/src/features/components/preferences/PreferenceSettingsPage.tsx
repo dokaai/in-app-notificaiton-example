@@ -3,11 +3,11 @@
 import { Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
+import { PreferenceEmptyState } from "@/features/components/preferences/PreferenceEmptyState";
 import { PreferenceGroupCard } from "@/features/components/preferences/PreferenceGroupCard";
 import { PreferenceSettingsSkeleton } from "@/features/components/preferences/PreferenceSettingsSkeleton";
 import { PageHeader } from "@/features/components/shared/PageHeader";
 import { useToast } from "@/features/hooks/useToast";
-import { MOCK_PREFERENCE_GROUPS } from "@/features/constants/mockPreferences";
 import { useDemoStore } from "@/features/store/useDemoStore";
 import {
   PreferenceChannelState,
@@ -30,7 +30,7 @@ export function PreferenceSettingsPage() {
   const jwtToken = useDemoStore((state) => state.jwtToken);
   const [search, setSearch] = useState("");
   const [expandedGroupIds, setExpandedGroupIds] = useState<string[]>([]);
-  const [groups, setGroups] = useState<PreferenceGroup[]>(MOCK_PREFERENCE_GROUPS);
+  const [groups, setGroups] = useState<PreferenceGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -295,11 +295,8 @@ export function PreferenceSettingsPage() {
       ) : null}
 
       {!isLoading && filteredGroups.length === 0 ? (
-        <div className="mx-auto w-full rounded-lg border border-dashed border-slate-300 bg-white py-12 text-center lg:w-[60%]">
-          <p className="text-base font-medium text-foreground">No matching preferences found</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Try a different group or topic keyword.
-          </p>
+        <div className="mx-auto w-full lg:w-[60%]">
+          <PreferenceEmptyState />
         </div>
       ) : !isLoading ? (
         <div className="mx-auto w-full overflow-hidden rounded-lg border border-slate-200 bg-white lg:w-[60%]">

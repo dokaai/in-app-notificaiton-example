@@ -9,6 +9,7 @@ export interface CustomerJwtRequest {
   workspaceId: string;
   productSpaceCode: string;
   currentToken?: string;
+  expiresIn?: string;
 }
 
 export interface CustomerJwtResponse {

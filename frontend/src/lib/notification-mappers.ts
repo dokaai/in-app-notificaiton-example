@@ -64,6 +64,32 @@ function parseJsonRecord(value: string) {
   }
 }
 
+function readStringLikeId(value: unknown) {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  return undefined;
+}
+
+function getServerNotificationId(value: unknown): string | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  return (
+    readStringLikeId(value.id) ??
+    readStringLikeId(value.notificationId) ??
+    readStringLikeId(value.inAppNotificationId) ??
+    readStringLikeId(value.messageId) ??
+    readStringLikeId(value._id)
+  );
+}
+
 function getParsedNotificationPayload(
   payload: NotificationPayloadEnvelope["payload"]
 ): NotificationContentShape | null {
@@ -106,8 +132,10 @@ function buildNotificationIdentity(notification: InAppNotification) {
     notification.updatedAt ??
     new Date().toISOString();
 
-  if (typeof notification.id === "string" && notification.id.trim()) {
-    return notification.id;
+  const serverNotificationId = getServerNotificationId(notification);
+
+  if (serverNotificationId) {
+    return serverNotificationId;
   }
 
   const title = content?.title ?? parsedPayload?.title ?? notification.title ?? "";
@@ -138,6 +166,15 @@ export function normalizeIncomingNotification(payload: unknown): InAppNotificati
   }
 
   const socketEnvelope = payload as SocketEnvelope;
+  const envelopeNotificationId = getServerNotificationId(socketEnvelope);
+
+  if (envelopeNotificationId && ("payload" in socketEnvelope || "content" in socketEnvelope)) {
+    return {
+      ...socketEnvelope,
+      id: envelopeNotificationId,
+    } as InAppNotification;
+  }
+
   const candidate = socketEnvelope.data ?? socketEnvelope.payload ?? payload;
 
   if (!isRecord(candidate)) {
@@ -145,11 +182,24 @@ export function normalizeIncomingNotification(payload: unknown): InAppNotificati
   }
 
   if ("notification" in candidate && isRecord(candidate.notification)) {
-    return normalizeIncomingNotification(candidate.notification);
+    const normalizedNotification = normalizeIncomingNotification(candidate.notification);
+
+    return normalizedNotification && envelopeNotificationId
+      ? {
+          ...normalizedNotification,
+          id: getServerNotificationId(normalizedNotification) ?? envelopeNotificationId,
+        }
+      : normalizedNotification;
   }
 
+  const candidateNotificationId =
+    getServerNotificationId(candidate) ?? envelopeNotificationId;
+
   if ("id" in candidate || "payload" in candidate || "content" in candidate) {
-    return candidate as InAppNotification;
+    return {
+      ...candidate,
+      ...(candidateNotificationId ? { id: candidateNotificationId } : {}),
+    } as InAppNotification;
   }
 
   if (looksLikeNotificationContent(candidate)) {
@@ -166,10 +216,7 @@ export function normalizeIncomingNotification(payload: unknown): InAppNotificati
       typeof candidate.customerId === "string" ? candidate.customerId : undefined;
 
     return {
-      id:
-        typeof candidate.id === "string" && candidate.id.trim()
-          ? candidate.id
-          : `${customerId ?? "unknown-customer"}:${timestampCandidate}`,
+      id: candidateNotificationId ?? `${customerId ?? "unknown-customer"}:${timestampCandidate}`,
       customerId,
       isRead: Boolean(candidate.isRead),
       createdAt:

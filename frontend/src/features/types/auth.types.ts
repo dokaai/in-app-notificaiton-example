@@ -1,4 +1,6 @@
 export interface LoginPayload {
+  customerJwtPrivateKey: string;
+  customerSigningKeyId: string;
   customerUniqueCustomerId: string;
   customerWorkspaceId: string;
   customerProductSpaceCode: string;

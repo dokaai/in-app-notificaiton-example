@@ -1,6 +1,13 @@
 import { create } from "zustand";
 import { MOCK_NOTIFICATIONS } from "@/features/constants/mockNotifications";
-import { clearAuthFromStorage, readAuthFromStorage, saveAuthToStorage } from "@/features/utils/storage";
+import {
+  clearAuthFromStorage,
+  readAuthFromStorage,
+  readTokenGenerationValuesFromSession,
+  saveAuthToStorage,
+  saveJwtTokenToStorage,
+  saveTokenGenerationValuesToSession,
+} from "@/features/utils/storage";
 import { CustomerDetails, LoginPayload } from "@/features/types/auth.types";
 import { InAppNotificationItem } from "@/features/types/notification.types";
 import { SocketStatus } from "@/features/types/socket.types";
@@ -8,6 +15,8 @@ import { SocketStatus } from "@/features/types/socket.types";
 interface DemoState {
   isHydrated: boolean;
   isAuthenticated: boolean;
+  customerJwtPrivateKey: string;
+  customerSigningKeyId: string;
   customerUniqueCustomerId: string;
   customerWorkspaceId: string;
   customerProductSpaceCode: string;
@@ -22,6 +31,7 @@ interface DemoState {
   login: (payload: LoginPayload) => void;
   logout: () => void;
   initializeFromStorage: () => void;
+  updateJwtToken: (jwtToken: string) => void;
   setCustomerDetails: (customerDetails: CustomerDetails | null) => void;
   setNotifications: (notifications: InAppNotificationItem[]) => void;
   setUnreadCount: (count: number) => void;
@@ -40,6 +50,8 @@ interface DemoState {
 export const useDemoStore = create<DemoState>((set, get) => ({
   isHydrated: false,
   isAuthenticated: false,
+  customerJwtPrivateKey: "",
+  customerSigningKeyId: "",
   customerUniqueCustomerId: "",
   customerWorkspaceId: "",
   customerProductSpaceCode: "",
@@ -52,11 +64,17 @@ export const useDemoStore = create<DemoState>((set, get) => ({
   notificationsError: null,
   socketSubscriptionNonce: 0,
   login: ({
+    customerJwtPrivateKey,
+    customerSigningKeyId,
     customerUniqueCustomerId,
     customerWorkspaceId,
     customerProductSpaceCode,
     jwtToken,
   }) => {
+    saveTokenGenerationValuesToSession({
+      customerJwtPrivateKey,
+      customerSigningKeyId,
+    });
     saveAuthToStorage({
       customerUniqueCustomerId,
       customerWorkspaceId,
@@ -65,6 +83,8 @@ export const useDemoStore = create<DemoState>((set, get) => ({
     });
     set({
       isAuthenticated: true,
+      customerJwtPrivateKey,
+      customerSigningKeyId,
       customerUniqueCustomerId,
       customerWorkspaceId,
       customerProductSpaceCode,
@@ -79,6 +99,8 @@ export const useDemoStore = create<DemoState>((set, get) => ({
     clearAuthFromStorage();
     set({
       isAuthenticated: false,
+      customerJwtPrivateKey: "",
+      customerSigningKeyId: "",
       customerUniqueCustomerId: "",
       customerWorkspaceId: "",
       customerProductSpaceCode: "",
@@ -104,9 +126,13 @@ export const useDemoStore = create<DemoState>((set, get) => ({
       return;
     }
 
+    const tokenGenerationValues = readTokenGenerationValuesFromSession();
+
     set({
       isHydrated: true,
       isAuthenticated: true,
+      customerJwtPrivateKey: tokenGenerationValues?.customerJwtPrivateKey ?? "",
+      customerSigningKeyId: tokenGenerationValues?.customerSigningKeyId ?? "",
       customerUniqueCustomerId: auth.customerUniqueCustomerId,
       customerWorkspaceId: auth.customerWorkspaceId,
       customerProductSpaceCode: auth.customerProductSpaceCode,
@@ -114,6 +140,10 @@ export const useDemoStore = create<DemoState>((set, get) => ({
       customerDetails: null,
       socketStatus: "disconnected",
     });
+  },
+  updateJwtToken: (jwtToken) => {
+    saveJwtTokenToStorage(jwtToken);
+    set({ jwtToken });
   },
   setCustomerDetails: (customerDetails) => set({ customerDetails }),
   setNotifications: (notifications) => set({ notifications }),

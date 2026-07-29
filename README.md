@@ -103,6 +103,8 @@ jwtToken
 
 Private key and signing key id are not stored in localStorage.
 
+While the browser tab session stays open, the app keeps the signing values in session storage, re-mints the customer token immediately after hydration when needed, and then re-mints it every 10 minutes. If the browser tab session is closed after the token expires, sign in again.
+
 ## App Pages
 
 ```txt

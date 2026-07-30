@@ -18,15 +18,17 @@ const CHANNEL_OPTIONS: {
   { key: PreferenceChannel.EMAIL, label: "Email", shortLabel: "Email", icon: Mail },
   { key: PreferenceChannel.IN_APP, label: "In-App", shortLabel: "In-app", icon: Bell },
   { key: PreferenceChannel.SMS, label: "SMS", shortLabel: "SMS", icon: MessageSquareText },
+  { key: PreferenceChannel.CHAT, label: "Chat", shortLabel: "Chat", icon: MessageCircleMore },
   { key: PreferenceChannel.PUSH, label: "Push", shortLabel: "Push", icon: Smartphone },
   { key: PreferenceChannel.WHATS_APP, label: "WhatsApp", shortLabel: "WhatsApp", icon: MessageCircleMore },
 ];
 
 function areChannelStatesEqual(
   left: PreferenceChannelState,
-  right: PreferenceChannelState
+  right: PreferenceChannelState,
+  channelKeys: PreferenceChannel[]
 ) {
-  return CHANNEL_OPTIONS.every(({ key }) => left[key] === right[key]);
+  return channelKeys.every((key) => left[key] === right[key]);
 }
 
 export function PreferenceOffSwitch({
@@ -72,6 +74,7 @@ export function PreferenceChannelEditor({
   description,
   notificationOff,
   channels,
+  channelKeys,
   onSaveChannels,
   onToggleNotificationOff,
   compact = false,
@@ -81,6 +84,7 @@ export function PreferenceChannelEditor({
   description?: string;
   notificationOff: boolean;
   channels: PreferenceChannelState;
+  channelKeys: PreferenceChannel[];
   onSaveChannels: (channels: PreferenceChannelState) => void | Promise<void>;
   onToggleNotificationOff: (notificationOff: boolean) => void | Promise<void>;
   compact?: boolean;
@@ -93,8 +97,8 @@ export function PreferenceChannelEditor({
   }, [channels]);
 
   const isDirty = useMemo(
-    () => !areChannelStatesEqual(channels, draftChannels),
-    [channels, draftChannels]
+    () => !areChannelStatesEqual(channels, draftChannels, channelKeys),
+    [channelKeys, channels, draftChannels]
   );
 
   function toggleChannel(channel: PreferenceChannel) {
@@ -129,7 +133,7 @@ export function PreferenceChannelEditor({
       ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
-        {CHANNEL_OPTIONS.map(({ key, label, shortLabel, icon: Icon }) => {
+        {CHANNEL_OPTIONS.filter(({ key }) => channelKeys.includes(key)).map(({ key, label, shortLabel, icon: Icon }) => {
           const isActive = draftChannels[key];
 
           return (

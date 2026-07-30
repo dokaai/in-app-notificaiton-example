@@ -2,17 +2,12 @@ export enum PreferenceChannel {
   EMAIL = "email",
   IN_APP = "inApp",
   SMS = "sms",
+  CHAT = "chat",
   PUSH = "push",
   WHATS_APP = "whatsApp",
 }
 
-export interface PreferenceChannelState {
-  email: boolean;
-  inApp: boolean;
-  sms: boolean;
-  push: boolean;
-  whatsApp: boolean;
-}
+export type PreferenceChannelState = Partial<Record<PreferenceChannel, boolean>>;
 
 export interface PreferenceTopic {
   id: string;
@@ -20,6 +15,7 @@ export interface PreferenceTopic {
   description?: string;
   isNotificationOff: boolean;
   channels: PreferenceChannelState;
+  channelKeys: PreferenceChannel[];
 }
 
 export interface PreferenceGroup {
@@ -28,5 +24,6 @@ export interface PreferenceGroup {
   description?: string;
   isNotificationOff: boolean;
   channels: PreferenceChannelState;
+  channelKeys: PreferenceChannel[];
   topics: PreferenceTopic[];
 }

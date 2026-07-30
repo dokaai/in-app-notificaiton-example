@@ -75,6 +75,7 @@ export function PreferenceGroupCard({
             title={group.name}
             notificationOff={group.isNotificationOff}
             channels={group.channels}
+            channelKeys={group.channelKeys}
             onSaveChannels={onSaveGroupChannels}
             onToggleNotificationOff={onToggleGroupNotificationOff}
             hideHeader
@@ -111,6 +112,7 @@ export function PreferenceGroupCard({
                   description={topic.description}
                   notificationOff={topic.isNotificationOff}
                   channels={topic.channels}
+                  channelKeys={topic.channelKeys}
                   onSaveChannels={(channels) => onSaveTopicChannels(topic.id, channels)}
                   onToggleNotificationOff={(notificationOff) =>
                     onToggleTopicNotificationOff(topic.id, notificationOff)
